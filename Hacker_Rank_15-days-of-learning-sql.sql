@@ -1,27 +1,33 @@
 
 USE `sql_unversity_details`;
 
+-- Create ranking of hackers & partition the data wrt dates.
 WITH X AS (
 SELECT DENSE_RANK() over (PARTITION BY submission_date ORDER BY hacker_id) AS `Rank`,hacker_id,submission_date FROM Submissions
 ),
+-- Count the number of times each unique hacker has submitted a new entry.
 Y AS (
 SELECT COUNT(`Rank`) as t_rank,hacker_id,submission_date FROM X GROUP BY hacker_id,submission_date
 ),
+-- Find the maximum no of entries by any particular hacker during a particular day.
 Z AS (
 SELECT MAX(t_rank) AS h_rank,submission_date FROM Y GROUP BY submission_date
 ),
+-- Filter all those hackers who have made maximum entries during a day.
 W AS (
 SELECT Y.hacker_id,Y.submission_date FROM Z
 JOIN Y
 ON Y.`t_rank`=Z.`h_rank`
 GROUP BY Y.submission_date
 ORDER BY Y.submission_date),
+-- Merge results with hackers table to get people name.
 FINAL_TABLE1 AS (
 SELECT W.hacker_id,H.`name`,W.submission_date FROM W
 JOIN Hackers AS H
 ON W.hacker_id=H.hacker_id
 ),
 -- ############################################################
+-- Get list of unique hacker wrt dates.
 D1 AS (
 SELECT DISTINCT (hacker_id),submission_date FROM Submissions WHERE submission_date = '2016-03-01'
 ),
@@ -67,6 +73,7 @@ SELECT DISTINCT (hacker_id),submission_date FROM Submissions WHERE submission_da
 D15 AS (
 SELECT DISTINCT (hacker_id),submission_date FROM Submissions WHERE submission_date = '2016-03-15' AND hacker_id IN (SELECT hacker_id FROM D14)
 ),
+-- Count unique hackers from each day.
 FINAL_TABLE2 AS (
 SELECT COUNT(DISTINCT hacker_id),submission_date FROM D1
 UNION
@@ -98,6 +105,7 @@ SELECT COUNT(DISTINCT hacker_id),submission_date FROM D14
 UNION
 SELECT COUNT(DISTINCT hacker_id),submission_date FROM D15)
 
+-- Merge the two results to get the final view.
 SELECT t2.submission_date,t2.`COUNT(DISTINCT hacker_id)` AS `Unique_hackers`,t1.hacker_id,t1.`name` FROM FINAL_TABLE2 AS t2
 JOIN FINAL_TABLE1 AS t1
 ON t2.submission_date=t1.submission_date
